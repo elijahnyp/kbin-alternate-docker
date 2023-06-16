@@ -26,6 +26,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-!ChangeThisRedisPass!}
+      REDIS_DNS: "redis://${REDIS_PASSWORD:-!ChangeThisRedisPass!}@redis:6379"
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-!ChangeThisRabbitPass!}
       RABBITMQ_USER: ${RABBITMQ_USER:-kbin}
     volumes:
@@ -44,10 +45,13 @@ services:
       SERVER_NAME: ${SERVER_NAME:-kbin.localhost, caddy:80}
       MERCURE_PUBLISHER_JWT_KEY: ${CADDY_MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
       MERCURE_SUBSCRIBER_JWT_KEY: ${CADDY_MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
+      AWS_ACCESS_KEY_ID: ${S3_KEY:-!DUMMY}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET:-!DUMMY}
     restart: always
     volumes:
       - caddy_data:/data
       - caddy_config:/config
+      - media:/srv/app/public/media
     ports:
       # HTTP
       - target: 80
@@ -65,6 +69,7 @@ services:
   redis:
     image: redis:7.0.11-alpine
     restart: always
+    # command: redis-server --save 20 1 --loglevel debug --requirepass ${REDIS_PASSWORD:-!ChangeThisRedisPass!} --maxmemory-policy volatile-ttl
     command: redis-server --save 20 1 --loglevel warning --requirepass ${REDIS_PASSWORD:-!ChangeThisRedisPass!} --maxmemory-policy volatile-ttl
     volumes:
       - redis-data:/data
@@ -83,7 +88,7 @@ services:
       - 15672:15672
 
   messenger_kbin:
-    user: "82:82"
+    # user: "82:82"
     build:
       context: .
       target: app_php
@@ -93,11 +98,12 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-kbin}:${POSTGRES_PASSWORD:-ChangeMe}@database:5432/${POSTGRES_DB:-kbin}?serverVersion=${POSTGRES_VERSION:-13}&charset=${POSTGRES_CHARSET:-utf8}
       MERCURE_URL: ${CADDY_MERCURE_URL:-http://caddy/.well-known/mercure}
-      MERCURE_PUBLIC_URL: https://${SERVER_NAME:-kbin.localhost}/.well-known/mercure
+      MERCURE_PUBLIC_URL: http://${SERVER_NAME:-kbin.localhost}/.well-known/mercure
       MERCURE_JWT_SECRET: ${CADDY_MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-!ChangeThisRedisPass!}
+      REDIS_DNS: "redis://${REDIS_PASSWORD:-!ChangeThisRedisPass!}@redis:6379"
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-!ChangeThisRabbitPass!}
       RABBITMQ_USER: ${RABBITMQ_USER:-kbin}
     # volumes:
@@ -112,7 +118,7 @@ services:
       - php
 
   messenger_ap:
-    user: "82:82"
+    # user: "82:82"
     build:
       context: .
       target: app_php
@@ -121,11 +127,12 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-kbin}:${POSTGRES_PASSWORD:-ChangeMe}@database:5432/${POSTGRES_DB:-kbin}?serverVersion=${POSTGRES_VERSION:-13}&charset=${POSTGRES_CHARSET:-utf8}
       MERCURE_URL: ${CADDY_MERCURE_URL:-http://caddy/.well-known/mercure}
-      MERCURE_PUBLIC_URL: https://${SERVER_NAME:-kbin.localhost}/.well-known/mercure
+      MERCURE_PUBLIC_URL: http://${SERVER_NAME:-kbin.localhost}/.well-known/mercure
       MERCURE_JWT_SECRET: ${CADDY_MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-!ChangeThisRedisPass!}
+      REDIS_DNS: "redis://${REDIS_PASSWORD}@redis:6379"
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-!ChangeThisRabbitPass!}
       RABBITMQ_USER: ${RABBITMQ_USER:-kbin}
     # volumes:

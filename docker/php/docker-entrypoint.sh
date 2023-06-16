@@ -30,6 +30,7 @@ if [ "$1" = 'php-fpm' ] || [ "$1" = 'php' ] || [ "$1" = 'bin/console' ]; then
 
   if [ "$APP_ENV" = 'prod' ]; then
     composer install --prefer-dist --no-dev --optimize-autoloader --no-scripts --no-progress
+	composer run-script --no-dev post-install-cmd;
     composer clear-cache
   fi
 
@@ -66,8 +67,8 @@ if [ "$1" = 'php-fpm' ] || [ "$1" = 'php' ] || [ "$1" = 'bin/console' ]; then
 		fi
 	fi
 
-	setfacl -R -m u:www-data:rwX -m u:"$(whoami)":rwX var
-	setfacl -dR -m u:www-data:rwX -m u:"$(whoami)":rwX var
+	# setfacl -R -m u:www-data:rwX -m u:"$(whoami)":rwX var
+	# setfacl -dR -m u:www-data:rwX -m u:"$(whoami)":rwX var
 fi
 
 exec docker-php-entrypoint "$@"

@@ -27,6 +27,7 @@
   * Dockerfile
   * docker-compose.yml
 * unless leveraging S3 for media, the 'media' volume needs to be shared among all php containers.
+  * S3 is NOT working here yet
 
 ## Operational Considerations
 * caddy can't be scaled unless mercur is reconfigured to a cluster transport
@@ -40,8 +41,19 @@
   * `git config core.autocrlf false`
 
 ## Still to Do
-* all real testing
+* all real-world testing
 * rework containers to have all environment specific settings and assets overridable/built at runtime
+* restore https auto-config after testing
+* get S3 working
 
 ## Contact
 Best way to get a hold of me is via mastodon - https://mast.wangwood.house/@elijah
+
+
+## The First User
+
+```
+docker exec -it kbin-core-php-1 php bin/console kbin:user:create username email@exmple.com password
+docker exec -it kbin-core-php-1 php bin/console kbin:user:admin username
+```
+

@@ -4,7 +4,8 @@ FROM caddy:2.7-builder-alpine AS app_caddy_builder
 
 RUN xcaddy build v2.6.4 \
 	--with github.com/dunglas/mercure/caddy \
-	--with github.com/dunglas/vulcain/caddy
+	--with github.com/dunglas/vulcain/caddy \
+	--with github.com/lindenlab/caddy-s3-proxy
 
 FROM php:8.2-fpm-alpine AS app_php
 
@@ -72,10 +73,11 @@ HEALTHCHECK --interval=10s --timeout=3s --retries=3 CMD ["docker-healthcheck"]
 COPY --link docker/php/docker-entrypoint.sh /usr/local/bin/docker-entrypoint
 RUN chmod +x /usr/local/bin/docker-entrypoint
 
-ENTRYPOINT ["docker-entrypoint"]
-CMD ["php-fpm"]
-
 USER root
+
+ENTRYPOINT ["docker-entrypoint"]
+CMD ["php-fpm", "-R"]
+
 # https://getcomposer.org/doc/03-cli.md#composer-allow-superuser
 ENV COMPOSER_ALLOW_SUPERUSER=1
 ENV PATH="${PATH}:/root/.composer/vendor/bin"
@@ -86,25 +88,28 @@ COPY --from=composer/composer:2-bin --link /composer /usr/bin/composer
 COPY --link composer.* symfony.* ./
 RUN set -eux; \
     if [ -f composer.json ]; then \
+		composer config --json extra.symfony.docker 'true'; \
 		composer install --prefer-dist --no-dev --no-autoloader --no-scripts --no-progress; \
 		composer clear-cache; \
     fi
 
 # copy sources
-COPY --link  . ./
+COPY --link . ./
 RUN rm -Rf docker/
-COPY docker/php/monolog.yaml ./config/packages/prod/monolog.yaml
-COPY docker/php/monolog.yaml ./config/packages/dev/monolog.yaml
+COPY --link docker/php/monolog.yaml docker/php/cache.yaml ./config/packages/prod/
+# COPY --link docker/php/oneup_flysystem.yaml ./config/packages/prod/
+# COPY --link docker/php/services.yaml ./config/
 
 RUN set -eux; \
 	mkdir -p var/cache var/log; \
     if [ -f composer.json ]; then \
 		composer dump-autoload --classmap-authoritative --no-dev; \
 		composer dump-env prod; \
-		composer run-script --no-dev post-install-cmd; \
+		composer install --prefer-dist --no-dev --optimize-autoloader --no-scripts --no-progress; \
+    	composer clear-cache; \
 		chmod +x bin/console; sync; \
     fi
-
+	
 # finally build the front-end once all else is build
 RUN yarn install && yarn build
 
