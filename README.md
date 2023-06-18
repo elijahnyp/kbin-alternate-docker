@@ -50,6 +50,8 @@ include_stacktraces: true
 ```
 
 ## Gotchas
+* RUNTIME VARIABLES IN docker-compose AND .env MUST MACH BEFORE CONTAINER BUILD
+  * this will be fixed later and the containers will be 'static' and 'generic'
 * if working in windows, ensure you disable git line ending adjustment PRIOR to cloning kbin repo
   * `git config core.autocrlf false`
 

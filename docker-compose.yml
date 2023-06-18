@@ -9,8 +9,6 @@ services:
         SYMFONY_VERSION: ${SYMFONY_VERSION:-}
         STABILITY: ${STABILITY:-stable}
     restart: always
-    # volumes:
-    #   - php_socket:/var/run/php
     healthcheck:
       interval: 10s
       timeout: 3s
@@ -29,11 +27,19 @@ services:
       REDIS_DNS: "redis://${REDIS_PASSWORD:-!ChangeThisRedisPass!}@redis:6379"
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-!ChangeThisRabbitPass!}
       RABBITMQ_USER: ${RABBITMQ_USER:-kbin}
-    volumes:
-      - media:/srv/app/public/media
+      S3_KEY: ${S3_key:-!DUMMY}
+      S3_SECRET: ${S3_SECRET:-!DUMMYlongtemppassword}
+      S3_BUCKET: ${S3_BUCKET:-kbinmedia}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
+      S3_USE_PATH_STYLE_ENDPOINT: true
+      S3_VERSION: ${S3_VERSION:-2006-03-01}
+    # volumes:
+    #   - media:/srv/app/public/media
     depends_on:
       - redis
       - rabbitmq
+      - minio
 
   caddy:
     build:
@@ -41,17 +47,21 @@ services:
       target: app_caddy
     depends_on:
       - php
+      - minio
     environment:
       SERVER_NAME: ${SERVER_NAME:-kbin.localhost, caddy:80}
       MERCURE_PUBLISHER_JWT_KEY: ${CADDY_MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
       MERCURE_SUBSCRIBER_JWT_KEY: ${CADDY_MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
       AWS_ACCESS_KEY_ID: ${S3_KEY:-!DUMMY}
-      AWS_SECRET_ACCESS_KEY: ${S3_SECRET:-!DUMMY}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET:-!DUMMYlongtemppassword}
+      S3_BUCKET: ${S3_BUCKET:-kbinmedia}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
     restart: always
     volumes:
       - caddy_data:/data
       - caddy_config:/config
-      - media:/srv/app/public/media
+      # - media:/srv/app/public/media
     ports:
       # HTTP
       - target: 80
@@ -158,10 +168,25 @@ services:
 ###> symfony/mercure-bundle ###
 ###< symfony/mercure-bundle ###
 
+  minio:
+    image: minio/minio:RELEASE.2023-06-16T02-41-06Z
+    environment:
+      MINIO_ROOT_USER: ${S3_KEY:-!DUMMY}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET:-!DUMMYlongtemppassword}
+      BUCKET: ${S3_BUCKET:-kbinmedia}
+    entrypoint: /bin/sh
+    restart: always
+    ports:
+      - 9001:9001
+    command: [-c, 'mkdir -p /data/$$BUCKET; /usr/bin/docker-entrypoint.sh server /data --console-address ":9001"']
+    volumes:
+      - objstore:/data
+
 volumes:
   caddy_data:
   caddy_config:
   db-data:
   rabbitmq-data:
   redis-data:
-  media:
+  # media:
+  objstore:

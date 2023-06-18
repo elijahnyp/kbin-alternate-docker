@@ -24,9 +24,9 @@ handle_path /media/cache/resolve* {
 route /media/* {
    uri strip_prefix /media
    s3proxy {
-       region "us-east-1"
-       bucket "kbintest"
-       endpoint "http://dewey.artynet.local:9000"
+       region {$S3_REGION}
+       bucket {$S3_BUCKET}
+       endpoint {$S3_ENDPOINT}
        force_path_style
    }
 }
