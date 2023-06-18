@@ -1,4 +1,4 @@
-# Fully Containerized Docker Deployment
+# Alternate Docker Deployment for kbin
 
 ** THIS IS CURRENTLY A WORK IN PROGRESS **
 
@@ -54,6 +54,11 @@ include_stacktraces: true
   * this will be fixed later and the containers will be 'static' and 'generic'
 * if working in windows, ensure you disable git line ending adjustment PRIOR to cloning kbin repo
   * `git config core.autocrlf false`
+* if you get 500 errors on federation, it's probably a bad instance key.  Just nuke it from redis and all should be good again.  I don't know why it gets set to a short string when it sould be a cert, but it does.
+  1. `docker compose exec -it redis redis-cli`
+  2. `auth <redis password>`
+  3. `keys *instance_private_key`
+  4. `expire <key name> 1`
 
 ## Still to Do
 * all real-world testing
