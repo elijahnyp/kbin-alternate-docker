@@ -4,21 +4,22 @@
 
 ## Quickstart
 * git clone https://codeberg.org/Kbin/kbin-core.git
-* remove the following
+* remove the following (`rm -R docker*` is sufficient)
   * Dockerfile
   * docker directory
   * all docker-compose files
 * copy/move new docker directory, Dockerfile, and docker-compose.yml file in place of files you just removed
-* create .env file
+* create .env file (.env.example is sufficient to get it running but NOT for production)
 * `docker compose up --build` to run in the foregroud, run `docker compose up -d --build` to run in backgound
-  * if you didn't make any changes to theme, .env, etc. you don't need the `--build`
+  * if you didn't make any changes to theme, .env, etc. you don't need the `--build` after the initial startup
 
 ## Major Modifications to stock kbin
-* simplified docker file that only leverages 2 images
+* simplified docker file that only leverages 2 custom images
   * custom caddy image can likely be eliminated in the future
   * images can be built and committed to a repo, with appropriate modifications to docker-compose.yml
 * changed from 'unix socket' to 'tcp' for FastCGI to support instances on different nodes
 * reworked all logging to log to stdout in all containers
+* media storage in minio - eliminating any shared volumes between containers
 * reworked docker-compose.yml accordingly
 
 ## Implementation
@@ -26,8 +27,9 @@
   * the docker folder
   * Dockerfile
   * docker-compose.yml
-* unless leveraging S3 for media, the 'media' volume needs to be shared among all php containers.
+* if NOT leveraging S3 for media, the 'media' volume needs to be shared between caddy and php containers
   * S3 is only tested with private S3 compatible storage (minio tested so far) - but should work for official as well
+  * removing S3/minio from this setup isn't as staright forward as removing the values from env.
 
 ## Operational Considerations
 * caddy can't be scaled unless mercur is reconfigured to a cluster transport
@@ -37,10 +39,8 @@
   * next phase is developing kubernetes manifests for deployment
 
 ## S3 Configuration
-* make sure S3 lines in dockerfile are NOT commented
 * configure in environment (at build time, so .env approach)
-* switch the adapter in oneup_filesystem.yaml
-* profit! (hopefully)
+  * currently, some of the S3 config is compiled-in at build time (along with some other settings)
 
 ## Debugging
 To get a stacktrace in the logs, uncomment the following 2 lines in monolog.yaml
