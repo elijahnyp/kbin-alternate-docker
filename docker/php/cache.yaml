@@ -9,8 +9,8 @@ framework:
 
         # Redis
         app: cache.adapter.redis_tag_aware
-        default_redis_provider: redis://!ChangeThisRedisPass!@redis:6379
-        system: cache.adapter.redis_tag_aware
+        default_redis_provider: '%env(REDIS_DNS)%'
+        # system: cache.adapter.redis_tag_aware
 
         # APCu (not recommended with heavy random-write workloads as memory fragmentation can cause perf issues)
         # app: cache.tagaware.filesystem

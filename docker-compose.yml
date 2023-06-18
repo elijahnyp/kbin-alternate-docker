@@ -88,12 +88,9 @@ services:
       - 15672:15672
 
   messenger_kbin:
-    # user: "82:82"
     build:
       context: .
       target: app_php
-      # target: symfony_messenger
-    # image: app_php
     command: 'sh -c "php bin/console messenger:consume async --time-limit=3600"'
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-kbin}:${POSTGRES_PASSWORD:-ChangeMe}@database:5432/${POSTGRES_DB:-kbin}?serverVersion=${POSTGRES_VERSION:-13}&charset=${POSTGRES_CHARSET:-utf8}
@@ -106,8 +103,6 @@ services:
       REDIS_DNS: "redis://${REDIS_PASSWORD:-!ChangeThisRedisPass!}@redis:6379"
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-!ChangeThisRabbitPass!}
       RABBITMQ_USER: ${RABBITMQ_USER:-kbin}
-    # volumes:
-    #   - php_socket:/var/run/php
     healthcheck:
       interval: 20s
       timeout: 3s
@@ -118,11 +113,9 @@ services:
       - php
 
   messenger_ap:
-    # user: "82:82"
     build:
       context: .
       target: app_php
-    # image: app_php
     command: 'sh -c "php bin/console messenger:consume async_ap --time-limit=3600"'
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-kbin}:${POSTGRES_PASSWORD:-ChangeMe}@database:5432/${POSTGRES_DB:-kbin}?serverVersion=${POSTGRES_VERSION:-13}&charset=${POSTGRES_CHARSET:-utf8}
@@ -135,8 +128,6 @@ services:
       REDIS_DNS: "redis://${REDIS_PASSWORD}@redis:6379"
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-!ChangeThisRabbitPass!}
       RABBITMQ_USER: ${RABBITMQ_USER:-kbin}
-    # volumes:
-    #   - php_socket:/var/run/php
     healthcheck:
       interval: 20s
       timeout: 3s
@@ -168,7 +159,6 @@ services:
 ###< symfony/mercure-bundle ###
 
 volumes:
-  # php_socket:
   caddy_data:
   caddy_config:
   db-data:

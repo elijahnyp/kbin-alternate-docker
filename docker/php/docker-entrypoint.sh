@@ -7,38 +7,13 @@ if [ "${1#-}" != "$1" ]; then
 fi
 
 if [ "$1" = 'php-fpm' ] || [ "$1" = 'php' ] || [ "$1" = 'bin/console' ]; then
-	# Install the project the first time PHP is started
-	# After the installation, the following block can be deleted
-	if [ ! -f composer.json ]; then
-		CREATION=1
+		# if running as a service install assets
+	if [ "$1" == "php-fpm" ]; then
+		echo "Starting as servce..."
 
-		rm -Rf tmp/
-		composer create-project "symfony/skeleton $SYMFONY_VERSION" tmp --stability="$STABILITY" --prefer-dist --no-progress --no-interaction --no-install
-
-		cd tmp
-		composer require "php:>=$PHP_VERSION"
-		composer config --json extra.symfony.docker 'true'
-		cp -Rp . ..
-		cd -
-
-		rm -Rf tmp/
-	fi
-
-	if [ "$APP_ENV" != 'prod' ]; then
-		composer install --prefer-dist --no-progress --no-interaction
-	fi
-
-  if [ "$APP_ENV" = 'prod' ]; then
-    composer install --prefer-dist --no-dev --optimize-autoloader --no-scripts --no-progress
-	composer run-script --no-dev post-install-cmd;
-    composer clear-cache
-  fi
-
-	if grep -q ^DATABASE_URL= .env; then
-		# After the installation, the following block can be deleted
-		if [ "$CREATION" = "1" ]; then
-			echo "To finish the installation please press Ctrl+C to stop Docker Compose and run: docker compose up --build"
-			sleep infinity
+		# dump out a config php file if an environment file is found and we are in production
+		if [ "$APP_ENV" == "prod" ]; then
+			composer dump-env prod
 		fi
 
 		echo "Waiting for db to be ready..."
@@ -65,10 +40,8 @@ if [ "$1" = 'php-fpm' ] || [ "$1" = 'php' ] || [ "$1" = 'bin/console' ]; then
 		if [ "$( find ./migrations -iname '*.php' -print -quit )" ]; then
 			bin/console doctrine:migrations:migrate --no-interaction
 		fi
+		# composer run-script --no-dev post-install-cmd
 	fi
-
-	# setfacl -R -m u:www-data:rwX -m u:"$(whoami)":rwX var
-	# setfacl -dR -m u:www-data:rwX -m u:"$(whoami)":rwX var
 fi
 
-exec docker-php-entrypoint "$@"
+exec "$@"

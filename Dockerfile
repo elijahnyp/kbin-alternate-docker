@@ -87,31 +87,29 @@ COPY --from=composer/composer:2-bin --link /composer /usr/bin/composer
 # prevent the reinstallation of vendors at every changes in the source code
 COPY --link composer.* symfony.* ./
 RUN set -eux; \
-    if [ -f composer.json ]; then \
-		composer config --json extra.symfony.docker 'true'; \
-		composer install --prefer-dist --no-dev --no-autoloader --no-scripts --no-progress; \
-		composer clear-cache; \
-    fi
+	composer install --prefer-dist --no-dev --no-autoloader --no-scripts --no-progress; \
+	composer clear-cache; 
 
 # copy sources
 COPY --link . ./
 RUN rm -Rf docker/
 COPY --link docker/php/monolog.yaml docker/php/cache.yaml ./config/packages/prod/
-# COPY --link docker/php/oneup_flysystem.yaml ./config/packages/prod/
-# COPY --link docker/php/services.yaml ./config/
+
+# COMMENT OUT BELOW COPY LINES TO DISABLE S3 STORAGE
+COPY --link docker/php/oneup_flysystem.yaml docker/php/liip_imagine.yaml ./config/packages/prod/
+COPY --link docker/php/oneup_flysystem.yaml docker/php/liip_imagine.yaml ./config/packages/
+COPY --link docker/php/services.yaml ./config/
+
+
 
 RUN set -eux; \
-	mkdir -p var/cache var/log; \
-    if [ -f composer.json ]; then \
-		composer dump-autoload --classmap-authoritative --no-dev; \
-		composer dump-env prod; \
-		composer install --prefer-dist --no-dev --optimize-autoloader --no-scripts --no-progress; \
-    	composer clear-cache; \
-		chmod +x bin/console; sync; \
-    fi
+	mkdir -p var/cache; \
+	composer dump-autoload --classmap-authoritative --no-dev; \
+	composer run-script --no-dev post-install-cmd; \
+	chmod +x bin/console; sync;
 	
 # finally build the front-end once all else is build
-RUN yarn install && yarn build
+RUN yarn install && yarn build && yarn cache clean && rm -rf node_modules
 
 # Caddy image
 FROM caddy:2-alpine AS app_caddy

@@ -1,0 +1,66 @@
+liip_imagine:
+#  cache: cached_s3_client
+  driver: "gd"
+  webp:
+    generate: true
+
+  filter_sets:
+    entry_thumb:
+      quality: 90
+      filters:
+        thumbnail: { size: [ 350, 300 ], mode: outbound }
+    avatar_thumb:
+      quality: 90
+      filters:
+        thumbnail: { size: [ 100, 100 ], mode: fixed }
+    post_thumb:
+      quality: 90
+      filters:
+        thumbnail: { size: [ 600, 500 ], mode: inset }
+    user_cover:
+      quality: 90
+      filters:
+        thumbnail: { size: [ 1500, 500 ], mode: fixed }
+
+  loaders:
+    local_images:
+      flysystem:
+        filesystem_service: League\Flysystem\Filesystem
+
+  data_loader: local_images
+
+  resolvers:
+    default:
+      flysystem:
+        filesystem_service: League\Flysystem\Filesystem
+        root_url:           '%kbin_storage_url%'
+        cache_prefix:       cache
+        visibility:         public
+
+    entry_thumb:
+      flysystem:
+        filesystem_service: League\Flysystem\Filesystem
+        root_url:           '%kbin_storage_url%'
+        cache_prefix:       cache
+        visibility:         public
+
+    avatar_thumb:
+      flysystem:
+        filesystem_service: League\Flysystem\Filesystem
+        root_url: '%kbin_storage_url%'
+        cache_prefix: cache
+        visibility: public
+
+    post_thumb:
+      flysystem:
+        filesystem_service: League\Flysystem\Filesystem
+        root_url: '%kbin_storage_url%'
+        cache_prefix: cache
+        visibility: public
+
+    user_cover:
+      flysystem:
+        filesystem_service: League\Flysystem\Filesystem
+        root_url: '%kbin_storage_url%'
+        cache_prefix: cache
+        visibility: public

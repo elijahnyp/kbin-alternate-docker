@@ -20,15 +20,16 @@ handle_path /media/cache/resolve* {
     try_files {uri} {uri}/ /index.php?{query_string}
 }
 
-#route /media/* {
-#    uri strip_prefix /media
-#    s3proxy {
-#        region "us-east-1"
-#        bucket "kbintest"
-#        endpoint "http://dewey.artynet.local:9000"
-#        force_path_style
-#    }
-#}
+# S3 PROXY
+route /media/* {
+   uri strip_prefix /media
+   s3proxy {
+       region "us-east-1"
+       bucket "kbintest"
+       endpoint "http://dewey.artynet.local:9000"
+       force_path_style
+   }
+}
 
 route {
     root * /srv/app/public
