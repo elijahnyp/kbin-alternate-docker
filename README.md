@@ -1,8 +1,22 @@
 # Alternate Docker Deployment for kbin
 
 ** THIS IS CURRENTLY A WORK IN PROGRESS **
+** Documentation may be old and incomplete **
 
 ## Quickstart
+
+### docker compose
+* clone this repo
+* customize environment in docker-compose.yml to your needs
+* `docker compose up` (or `docker compose up -d` to run in background)
+
+### helm quickstart
+* clone this repo
+* in Chart/kbin, copy values.yaml
+* customize your copy of values.yaml to suit your needs
+* `helm install kbin  Charts/kbin/ --namespace {some namespace} -f {your values file}`
+
+## Old Build Yourself
 * git clone https://codeberg.org/Kbin/kbin-core.git
 * remove the following (`rm -R docker*` is sufficient)
   * Dockerfile
