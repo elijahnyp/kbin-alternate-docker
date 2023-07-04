@@ -15,11 +15,11 @@
 
 ## Major Modifications to stock kbin
 * simplified docker file that only leverages 2 custom images
-  * custom caddy image can likely be eliminated in the future
+  * custom caddy image with S3 filesystem, S3 proxy, and entrypoint that templates caddy json config (caddyfile is NOT supported at this time since virtual filesystems are leveraged)
   * images can be built and committed to a repo, with appropriate modifications to docker-compose.yml
 * changed from 'unix socket' to 'tcp' for FastCGI to support instances on different nodes
 * reworked all logging to log to stdout in all containers
-* media storage in minio - eliminating any shared volumes between containers
+* all shared volumes are eliminated - any volume mount is strictly local storage for that container and /should/ be ephemeral
 * reworked docker-compose.yml accordingly
 
 ## Implementation
@@ -27,9 +27,8 @@
   * the docker folder
   * Dockerfile
   * docker-compose.yml
-* if NOT leveraging S3 for media, the 'media' volume needs to be shared between caddy and php containers
-  * S3 is only tested with private S3 compatible storage (minio tested so far) - but should work for official as well
-  * removing S3/minio from this setup isn't as staright forward as removing the values from env.
+* S3 is only tested with private S3 compatible storage (minio tested so far) - but should work for official as well
+* removing S3 from this setup isn't supported - the caddy config is reliant on S3 storage and would require significant reworking of the config and build process
 
 ## Operational Considerations
 * caddy can't be scaled unless mercur is reconfigured to a cluster transport
@@ -37,10 +36,11 @@
 * php should be scalable, but it's untested
 * a redis cluster should work, but at this time hasn't been tested
   * next phase is developing kubernetes manifests for deployment
+* minio could be adapted to scale, but if deploying in kubernetes it's better to leverage a provider's storage or something like rook-ceph for local clusters
 
 ## S3 Configuration
-* configure in environment (at build time, so .env approach)
-  * currently, some of the S3 config is compiled-in at build time (along with some other settings)
+* configuration is based on S3 storage
+* compose file approach deployes minio as storage back-end
 
 ## Debugging
 To get a stacktrace in the logs, uncomment the following 2 lines in monolog.yaml
@@ -57,12 +57,12 @@ include_stacktraces: true
 * if you get 500 errors on federation, it's probably a bad instance key.  Just nuke it from redis and all should be good again.  I don't know why it gets set to a short string when it sould be a cert, but it does.
   1. `docker compose exec -it redis redis-cli`
   2. `auth <redis password>`
-  3. `keys *instance_private_key`
+  3. `d`
   4. `expire <key name> 1`
 
 ## Still to Do
 * all real-world testing
-* rework containers to have all environment specific settings and assets overridable/built at runtime
+* rework containers to have all environment specific settings and assets overridable/built at runtime3
 * restore https auto-config after testing
   * initial usage of this work will be deploying kbin in kubernetes behind an nginx proxy
     * yes, caddy is sligtly redundant but it is doing the S3 proxy and the mercurial hub work

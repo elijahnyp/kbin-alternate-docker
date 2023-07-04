@@ -1,0 +1,143 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kbin.fullname" . }}-messenger-ap
+  labels:
+    {{- include "kbin.labels" . | nindent 4 }}
+    {{- include "kbin.messenger-ap.selectorLabels" . | nindent 4 }}
+  annotations:
+    {{- with (default .Values.deploymentAnnotations .Values.php.deploymentAnnotation) }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  replicas: {{ .Values.php.replicas | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "kbin.messenger-ap.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- with (default .Values.podAnnotations .Values.php.podAnnotations) }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        # roll the pods to pick up any db migrations or other changes
+        {{/*- include "kbin.rollingPodAnnotations" . | nindent 8 */}}
+      labels:
+        {{- include "kbin.messenger-ap.selectorLabels" . | nindent 8 }}
+        {{- include "kbin.labels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "kbin.serviceAccountName" . }}
+      {{- with (default .Values.podSecurityContext .Values.php.podSecurityContext) }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}-messenger-ap
+          {{- with (default .Values.securityContext .Values.php.securityContext) }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: 
+            - sh
+            - "-c"
+            - "while true; do php bin/console messenger:consume async_ap --time-limit=3600; sleep 5; done"
+          envFrom:
+            - configMapRef:
+                name: {{ include "kbin.fullname" . }}-env
+            - secretRef:
+                name: kbin-mercure
+          env:
+            - name: MERCURE_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: kbin-mercure
+                  key: mercure-jwt-secret
+            - name: "REDIS_PASSWORD"
+              valueFrom:
+                secretKeyRef:
+                  name: kbin-redis
+                  key: password
+            - name: "POSTGRES_PASSWORD"
+              valueFrom:
+                secretKeyRef:
+                  name: kbin-postgres
+                  key: postgres-password
+            - name: "RABBITMQ_USER"
+              value: {{ .Values.rabbitmq.auth.username | default "user" }}
+            - name: "RABBITMQ_PASSWORD"
+              valueFrom:
+                secretKeyRef:
+                  name: kbin-rabbitmq-password
+                  key: rabbitmq-password
+            {{- if .Values.objClusterBucket.enabled }}
+            - name: "S3_KEY"
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "kbin.fullname" . }}-bucket-claim
+                  key: AWS_ACCESS_KEY_ID
+            - name: "S3_SECRET"
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "kbin.fullname" . }}-bucket-claim
+                  key: AWS_SECRET_ACCESS_KEY
+            - name: "S3_BUCKET"
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "kbin.fullname" . }}-bucket-claim
+                  key: BUCKET_NAME
+            - name: "S3_HOST"
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "kbin.fullname" . }}-bucket-claim
+                  key: BUCKET_HOST
+            - name: "S3_PORT"
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "kbin.fullname" . }}-bucket-claim
+                  key: BUCKET_PORT
+            {{- end }}
+            {{- if .Values.minio.enabled }}
+            - name: "S3_KEY"
+              valueFrom:
+                secretKeyRef:
+                  name: kbin-minio
+                  key: root-user
+            - name: "S3_SECRET"
+              valueFrom:
+                secretKeyRef:
+                  name: kbin-minio
+                  key: root-password
+            {{- end }}
+            {{- if .Values.objStaticConfig.enabled }}
+            - name: "S3_KEY"
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.objStaticConfig.credsSecret }}
+                  key: AWS_ACCESS_KEY_ID
+            - name: "S3_SECRET"
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.objStaticConfig.credsSecret }}
+                  key: AWS_SECRET_ACCESS_KEY
+            {{- end }}
+          # livenessProbe:
+          #   tcpSocket:
+          #     port: {{ .Values.php.service.port }}
+          #   failureThreshold: 3
+          #   periodSeconds: 10
+          # startupProbe:
+          #   tcpSocket:
+          #     port: {{ .Values.php.service.port }}
+          #   failureThreshold: 60
+          #   periodSeconds: 5
+          # readinessProbe:
+          #   tcpSocket:
+          #     port: {{ .Values.php.service.port }}
+          #   initialDelaySeconds: 5
+          #   periodSeconds: 5

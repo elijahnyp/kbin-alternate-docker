@@ -1,0 +1,9 @@
+{{- if .Values.objClusterBucket.enabled -}}
+apiVersion: objectbucket.io/v1alpha1
+kind: ObjectBucketClaim
+metadata:
+  name: {{ include "kbin.fullname" . }}-bucket-claim
+spec:
+  generateBucketName: {{ include "kbin.fullname" . }}-bucket
+  storageClassName: {{ .Values.objClusterBucket.storageClassName }}
+{{- end -}}

@@ -9,6 +9,7 @@ oneup_flysystem:
             awss3v3:
                 client: kbin.s3_client
                 bucket: '%amazon.s3.bucket%'
+                prefix: 'media'
 
     filesystems:
         public_uploads_filesystem:

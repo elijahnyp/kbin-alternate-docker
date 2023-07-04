@@ -1,0 +1,126 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "kbin.fullname" . }}-caddy
+  labels:
+    {{- include "kbin.labels" . | nindent 4 }}
+    {{- include "kbin.caddy.selectorLabels" . | nindent 4 }}
+  annotations:
+    {{- with (default .Values.deploymentAnnotations .Values.caddy.deploymentAnnotation) }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  replicas: {{ .Values.caddy.replicas | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "kbin.caddy.selectorLabels" . | nindent 6 }}
+  serviceName: {{ include "kbin.fullname" . }}-caddy
+  template:
+    metadata:
+      annotations:
+        {{- with (default .Values.podAnnotations .Values.caddy.podAnnotations) }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        # roll the pods to pick up any db migrations or other changes
+        {{/*- include "kbin.rollingPodAnnotations" . | nindent 8 */}}
+      labels:
+        {{- include "kbin.caddy.selectorLabels" . | nindent 8 }}
+        {{- include "kbin.labels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "kbin.serviceAccountName" . }}
+      {{- with (default .Values.podSecurityContext .Values.caddy.podSecurityContext) }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}-caddy
+          {{- with (default .Values.securityContext .Values.caddy.securityContext) }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: 
+            - caddy
+          envFrom:
+            - configMapRef:
+                name: {{ include "kbin.fullname" . }}-env
+            {{- if .Values.objClusterBucket.enabled }}
+            - secretRef:
+                name: {{ include "kbin.fullname" . }}-bucket-claim
+            {{- end }}
+            {{- if .Values.objStaticConfig.enabled }}
+            - secretRef:
+                name: {{ .Values.objStaticConfig.credsSecret }}
+            {{- end }}
+          env:
+            - name: FPM_HOST
+              value: {{ include "kbin.fullname" . }}-php-fpm
+            - name: FPM_PORT
+              value: {{ .Values.php.service.port | default "3000" | quote }}
+            - name: MERCURE_PUBLISHER_JWT_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: kbin-mercure
+                  key: mercure-jwt-secret
+            - name: MERCURE_SUBSCRIBER_JWT_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: kbin-mercure
+                  key: mercure-jwt-secret
+            {{- if .Values.objClusterBucket.enabled }}
+            - name: "S3_BUCKET"
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "kbin.fullname" . }}-bucket-claim
+                  key: BUCKET_NAME
+            - name: "S3_HOST"
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "kbin.fullname" . }}-bucket-claim
+                  key: BUCKET_HOST
+            - name: "S3_PORT"
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "kbin.fullname" . }}-bucket-claim
+                  key: BUCKET_PORT
+            {{- end }}
+            {{- if .Values.minio.enabled }}
+            - name: "S3_KEY"
+              valueFrom:
+                secretKeyRef:
+                  name: kbin-minio
+                  key: root-user
+            - name: "S3_SECRET"
+              valueFrom:
+                secretKeyRef:
+                  name: kbin-minio
+                  key: root-password
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: 2019
+            initialDelaySeconds: 30
+            failureThreshold: 3
+            periodSeconds: 5
+          volumeMounts:
+            - name: data
+              mountPath: /data
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: {{ .Values.caddy.storage.size }}
+      {{- if .Values.caddy.storage.class }}
+      storageClassName: {{ .Values.caddy.storage.class }}
+      {{- end }}
+

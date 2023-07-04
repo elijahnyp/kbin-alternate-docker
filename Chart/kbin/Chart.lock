@@ -1,0 +1,15 @@
+dependencies:
+- name: postgresql
+  repository: https://raw.githubusercontent.com/bitnami/charts/archive-full-index/bitnami
+  version: 12.5.8
+- name: redis
+  repository: https://raw.githubusercontent.com/bitnami/charts/archive-full-index/bitnami
+  version: 17.11.6
+- name: rabbitmq
+  repository: https://raw.githubusercontent.com/bitnami/charts/archive-full-index/bitnami
+  version: 12.0.3
+- name: minio
+  repository: https://raw.githubusercontent.com/bitnami/charts/archive-full-index/bitnami
+  version: 12.6.5
+digest: sha256:cb80db44230a3fe1374be4a002d6c2d32d34f8efe77a70853d36ed330b80b35d
+generated: "2023-07-03T18:22:03.7128638-04:00"

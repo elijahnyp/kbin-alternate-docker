@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    {{- include "kbin.labels" . | nindent 4 }}
+  name: {{ include "kbin.fullname" . }}-php-fpm
+  annotations:
+    {{- with (default .Values.deploymentAnnotations .Values.php.deploymentAnnotation) }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  ports:
+  - protocol: TCP
+    port: 3000
+    name: fpm
+  selector:
+    {{- include "kbin.php.selectorLabels" . | nindent 4 }}
+  type: {{ .Values.php.service.type | default "ClusterIP" }}

@@ -1,0 +1,664 @@
+{
+    "apps": {
+        "http": {
+            "servers": {
+                "https": {
+                    "listen": [
+                        ":443"
+                    ],
+                    "routes": [
+                        {
+                            "match": [
+                                {
+                                    "host": [
+                                        "${CADDY_HOSTNAME}"
+                                    ]
+                                }
+                            ],
+                            "handle": [
+                                {
+                                    "handler": "subroute",
+                                    "routes": [
+                                        {
+                                            "handle": [
+                                                {
+                                                    "handler": "headers",
+                                                    "response": {
+                                                        "set": {
+                                                            "Cache-Control": [
+                                                                "max-age=259200"
+                                                            ]
+                                                        }
+                                                    }
+                                                }
+                                            ],
+                                            "match": [
+                                                {
+                                                    "path_regexp": {
+                                                        "pattern": "\\.(ico|css|js|gif|jpg|webp|jpeg|png|svg|woff)$"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "handle": [
+                                                {
+                                                    "handler": "subroute",
+                                                    "routes": [
+                                                        {
+                                                            "handle": [
+                                                                {
+                                                                    "handler": "rewrite",
+                                                                    "strip_path_prefix": "/media/cache/resolve"
+                                                                }
+                                                            ]
+                                                        },
+                                                        {
+                                                            "handle": [
+                                                                {
+                                                                    "handler": "headers",
+                                                                    "response": {
+                                                                        "replace": {
+                                                                            "Cache-Control": [
+                                                                                {
+                                                                                    "replace": "max-age=259200",
+                                                                                    "search_regexp": "public"
+                                                                                }
+                                                                            ]
+                                                                        }
+                                                                    }
+                                                                }
+                                                            ]
+                                                        },
+                                                        {
+                                                            "group": "group0",
+                                                            "handle": [
+                                                                {
+                                                                    "handler": "rewrite",
+                                                                    "uri": "{http.matchers.file.relative}"
+                                                                }
+                                                            ],
+                                                            "match": [
+                                                                {
+                                                                    "file": {
+                                                                        "file_system": {
+                                                                            "backend": "s3",
+                                                                            "bucket": "${S3_BUCKET}",
+                                                                            "endpoint": "${S3_ENDPOINT}",
+                                                                            "force_path_style": true,
+                                                                            "region": "${S3_REGION}"
+                                                                        },
+                                                                        "root": "static",
+                                                                        "try_files": [
+                                                                            "{http.request.uri}",
+                                                                            "{http.request.uri}/"
+                                                                        ]
+                                                                    }
+                                                                }
+                                                            ]
+                                                        }
+                                                    ]
+                                                }
+                                            ],
+                                            "match": [
+                                                {
+                                                    "path": [
+                                                        "/media/cache/resolve*"
+                                                    ]
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "handle": [
+                                                {
+                                                    "handler": "subroute",
+                                                    "routes": [
+                                                        {
+                                                            "handle": [
+                                                                {
+                                                                    "BrowseTemplate": "",
+                                                                    "EnableBrowse": false,
+                                                                    "EnableDelete": false,
+                                                                    "EnablePut": false,
+                                                                    "Hide": null,
+                                                                    "bucket": "${S3_BUCKET}",
+                                                                    "endpoint": "${S3_ENDPOINT}",
+                                                                    "force_path_style": true,
+                                                                    "handler": "s3proxy",
+                                                                    "region": "${S3_REGION}"
+                                                                }
+                                                            ]
+                                                        }
+                                                    ]
+                                                }
+                                            ],
+                                            "match": [
+                                                {
+                                                    "path": [
+                                                        "/media/*"
+                                                    ]
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "handle": [
+                                                {
+                                                    "handler": "subroute",
+                                                    "routes": [
+                                                        {
+                                                            "handle": [
+                                                                {
+                                                                    "handler": "vars",
+                                                                    "root": "/srv/app/public"
+                                                                },
+                                                                {
+                                                                    "anonymous": true,
+                                                                    "handler": "mercure",
+                                                                    "publisher_jwt": {
+                                                                        "alg": "{env.MERCURE_PUBLISHER_JWT_ALG}",
+                                                                        "key": "{env.MERCURE_PUBLISHER_JWT_KEY}"
+                                                                    },
+                                                                    "subscriber_jwt": {
+                                                                        "alg": "{env.MERCURE_SUBSCRIBER_JWT_ALG}",
+                                                                        "key": "{env.MERCURE_SUBSCRIBER_JWT_KEY}"
+                                                                    },
+                                                                    "subscriptions": true,
+                                                                    "transport_url": "bolt:///data/mercure.db"
+                                                                },
+                                                                {
+                                                                    "handler": "vulcain"
+                                                                },
+                                                                {
+                                                                    "handler": "push"
+                                                                }
+                                                            ]
+                                                        },
+                                                        {
+                                                            "handle": [
+                                                                {
+                                                                    "handler": "static_response",
+                                                                    "headers": {
+                                                                        "Location": [
+                                                                            "{http.request.orig_uri.path}/"
+                                                                        ]
+                                                                    },
+                                                                    "status_code": 308
+                                                                }
+                                                            ],
+                                                            "match": [
+                                                                {
+                                                                    "file": {
+                                                                        "file_system": {
+                                                                            "backend": "s3",
+                                                                            "bucket": "${S3_BUCKET}",
+                                                                            "endpoint": "${S3_ENDPOINT}",
+                                                                            "force_path_style": true,
+                                                                            "region": "${S3_REGION}"
+                                                                        },
+                                                                        "root": "static",
+                                                                        "try_files": [
+                                                                            "{http.request.uri.path}/index.php"
+                                                                        ]
+                                                                    },
+                                                                    "not": [
+                                                                        {
+                                                                            "path": [
+                                                                                "*/"
+                                                                            ]
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            ]
+                                                        },
+                                                        {
+                                                            "handle": [
+                                                                {
+                                                                    "handler": "rewrite",
+                                                                    "uri": "{http.matchers.file.relative}"
+                                                                }
+                                                            ],
+                                                            "match": [
+                                                                {
+                                                                    "file": {
+                                                                        "file_system": {
+                                                                            "backend": "s3",
+                                                                            "bucket": "${S3_BUCKET}",
+                                                                            "endpoint": "${S3_ENDPOINT}",
+                                                                            "force_path_style": true,
+                                                                            "region": "${S3_REGION}"
+                                                                        },
+                                                                        "root": "static",
+                                                                        "split_path": [
+                                                                            ".php"
+                                                                        ],
+                                                                        "try_files": [
+                                                                            "{http.request.uri.path}",
+                                                                            "{http.request.uri.path}/index.php",
+                                                                            "index.php"
+                                                                        ]
+                                                                    }
+                                                                }
+                                                            ]
+                                                        },
+                                                        {
+                                                            "handle": [
+                                                                {
+                                                                    "handler": "reverse_proxy",
+                                                                    "transport": {
+                                                                        "protocol": "fastcgi",
+                                                                        "split_path": [
+                                                                            ".php"
+                                                                        ]
+                                                                    },
+                                                                    "upstreams": [
+                                                                        {
+                                                                            "dial": "${FPM_HOST:-php}:${FPM_PORT:-3000}"
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            ],
+                                                            "match": [
+                                                                {
+                                                                    "path": [
+                                                                        "*.php"
+                                                                    ]
+                                                                }
+                                                            ]
+                                                        },
+                                                        {
+                                                            "handle": [
+                                                                {
+                                                                    "encodings": {
+                                                                        "gzip": {},
+                                                                        "zstd": {}
+                                                                    },
+                                                                    "handler": "encode",
+                                                                    "prefer": [
+                                                                        "zstd",
+                                                                        "gzip"
+                                                                    ]
+                                                                },
+                                                                {
+                                                                    "file_system": {
+                                                                        "backend": "s3",
+                                                                        "bucket": "${S3_BUCKET}",
+                                                                        "endpoint": "${S3_ENDPOINT}",
+                                                                        "force_path_style": true,
+                                                                        "region": "${S3_REGION}"
+                                                                    },
+                                                                    "root": "static",
+                                                                    "handler": "file_server",
+                                                                    "hide": [
+                                                                        "/Caddyfile"
+                                                                    ]
+                                                                }
+                                                            ]
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ],
+                            "terminal": true
+                        }
+                    ],
+                    "tls_connection_policies": [
+                        {}
+                    ],
+                    "automatic_https": {
+                    },
+                    "logs": {
+                        "logger_names": {
+                            "localhost": ""
+                        }
+                    }
+                },
+                "http": {
+                    "listen": [
+                        ":80"
+                    ],
+                    "routes": [
+                        {
+                            "handle": [
+                                {
+                                    "handler": "subroute",
+                                    "routes": [
+                                        {
+                                            "handle": [
+                                                {
+                                                    "handler": "headers",
+                                                    "response": {
+                                                        "set": {
+                                                            "Cache-Control": [
+                                                                "max-age=259200"
+                                                            ]
+                                                        }
+                                                    }
+                                                }
+                                            ],
+                                            "match": [
+                                                {
+                                                    "path_regexp": {
+                                                        "pattern": "\\.(ico|css|js|gif|jpg|webp|jpeg|png|svg|woff)$"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "handle": [
+                                                {
+                                                    "handler": "subroute",
+                                                    "routes": [
+                                                        {
+                                                            "handle": [
+                                                                {
+                                                                    "handler": "rewrite",
+                                                                    "strip_path_prefix": "/media/cache/resolve"
+                                                                }
+                                                            ]
+                                                        },
+                                                        {
+                                                            "handle": [
+                                                                {
+                                                                    "handler": "headers",
+                                                                    "response": {
+                                                                        "replace": {
+                                                                            "Cache-Control": [
+                                                                                {
+                                                                                    "replace": "max-age=259200",
+                                                                                    "search_regexp": "public"
+                                                                                }
+                                                                            ]
+                                                                        }
+                                                                    }
+                                                                }
+                                                            ]
+                                                        },
+                                                        {
+                                                            "group": "group0",
+                                                            "handle": [
+                                                                {
+                                                                    "handler": "rewrite",
+                                                                    "uri": "{http.matchers.file.relative}"
+                                                                }
+                                                            ],
+                                                            "match": [
+                                                                {
+                                                                    "file": {
+                                                                        "file_system": {
+                                                                            "backend": "s3",
+                                                                            "bucket": "${S3_BUCKET}",
+                                                                            "endpoint": "${S3_ENDPOINT}",
+                                                                            "force_path_style": true,
+                                                                            "region": "${S3_REGION}"
+                                                                        },
+                                                                        "root": "static",
+                                                                        "try_files": [
+                                                                            "{http.request.uri}",
+                                                                            "{http.request.uri}/"
+                                                                        ]
+                                                                    }
+                                                                }
+                                                            ]
+                                                        },
+                                                        {
+                                                            "group": "group0",
+                                                            "handle": [
+                                                                {
+                                                                    "handler": "rewrite",
+                                                                    "uri": "{http.matchers.file.relative}?{query_string}"
+                                                                }
+                                                            ],
+                                                            "match": [
+                                                                {
+                                                                    "file": {
+                                                                        "file_system": {
+                                                                            "backend": "s3",
+                                                                            "bucket": "${S3_BUCKET}",
+                                                                            "endpoint": "${S3_ENDPOINT}",
+                                                                            "force_path_style": true,
+                                                                            "region": "${S3_REGION}"
+                                                                        },
+                                                                        "root": "static",
+                                                                        "try_files": [
+                                                                            "/index.php"
+                                                                        ]
+                                                                    }
+                                                                }
+                                                            ]
+                                                        }
+                                                    ]
+                                                }
+                                            ],
+                                            "match": [
+                                                {
+                                                    "path": [
+                                                        "/media/cache/resolve*"
+                                                    ]
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "handle": [
+                                                {
+                                                    "handler": "subroute",
+                                                    "routes": [
+                                                        {
+                                                            "handle": [
+                                                                {
+                                                                    "BrowseTemplate": "",
+                                                                    "EnableBrowse": false,
+                                                                    "EnableDelete": false,
+                                                                    "EnablePut": false,
+                                                                    "Hide": null,
+                                                                    "bucket": "${S3_BUCKET}",
+                                                                    "endpoint": "${S3_ENDPOINT}",
+                                                                    "force_path_style": true,
+                                                                    "handler": "s3proxy",
+                                                                    "region": "${S3_REGION}"
+                                                                }
+                                                            ]
+                                                        }
+                                                    ]
+                                                }
+                                            ],
+                                            "match": [
+                                                {
+                                                    "path": [
+                                                        "/media/*"
+                                                    ]
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "handle": [
+                                                {
+                                                    "handler": "subroute",
+                                                    "routes": [
+                                                        {
+                                                            "handle": [
+                                                                {
+                                                                    "handler": "vars",
+                                                                    "root": "/srv/app/public"
+                                                                },
+                                                                {
+                                                                    "anonymous": true,
+                                                                    "handler": "mercure",
+                                                                    "publisher_jwt": {
+                                                                        "alg": "{env.MERCURE_PUBLISHER_JWT_ALG}",
+                                                                        "key": "{env.MERCURE_PUBLISHER_JWT_KEY}"
+                                                                    },
+                                                                    "subscriber_jwt": {
+                                                                        "alg": "{env.MERCURE_SUBSCRIBER_JWT_ALG}",
+                                                                        "key": "{env.MERCURE_SUBSCRIBER_JWT_KEY}"
+                                                                    },
+                                                                    "subscriptions": true,
+                                                                    "transport_url": "bolt:///data/mercure.db"
+                                                                },
+                                                                {
+                                                                    "handler": "vulcain"
+                                                                },
+                                                                {
+                                                                    "handler": "push"
+                                                                }
+                                                            ]
+                                                        },
+                                                        {
+                                                            "handle": [
+                                                                {
+                                                                    "handler": "static_response",
+                                                                    "headers": {
+                                                                        "Location": [
+                                                                            "{http.request.orig_uri.path}/"
+                                                                        ]
+                                                                    },
+                                                                    "status_code": 308
+                                                                }
+                                                            ],
+                                                            "match": [
+                                                                {
+                                                                    "file": {
+                                                                        "file_system": {
+                                                                            "backend": "s3",
+                                                                            "bucket": "${S3_BUCKET}",
+                                                                            "endpoint": "${S3_ENDPOINT}",
+                                                                            "force_path_style": true,
+                                                                            "region": "${S3_REGION}"
+                                                                        },
+                                                                        "root": "static",
+                                                                        "try_files": [
+                                                                            "{http.request.uri.path}/index.php"
+                                                                        ]
+                                                                    },
+                                                                    "not": [
+                                                                        {
+                                                                            "path": [
+                                                                                "*/"
+                                                                            ]
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            ]
+                                                        },
+                                                        {
+                                                            "handle": [
+                                                                {
+                                                                    "handler": "rewrite",
+                                                                    "uri": "{http.matchers.file.relative}"
+                                                                }
+                                                            ],
+                                                            "match": [
+                                                                {
+                                                                    "file": {
+                                                                        "file_system": {
+                                                                            "backend": "s3",
+                                                                            "bucket": "${S3_BUCKET}",
+                                                                            "endpoint": "${S3_ENDPOINT}",
+                                                                            "force_path_style": true,
+                                                                            "region": "${S3_REGION}"
+                                                                        },
+                                                                        "root": "static",
+                                                                        "split_path": [
+                                                                            ".php"
+                                                                        ],
+                                                                        "try_files": [
+                                                                            "{http.request.uri.path}",
+                                                                            "{http.request.uri.path}/index.php",
+                                                                            "index.php"
+                                                                        ]
+                                                                    }
+                                                                }
+                                                            ]
+                                                        },
+                                                        {
+                                                            "handle": [
+                                                                {
+                                                                    "handler": "reverse_proxy",
+                                                                    "transport": {
+                                                                        "protocol": "fastcgi",
+                                                                        "split_path": [
+                                                                            ".php"
+                                                                        ]
+                                                                    },
+                                                                    "upstreams": [
+                                                                        {
+                                                                            "dial": "${FPM_HOST:-php}:${FPM_PORT:-3000}"
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            ],
+                                                            "match": [
+                                                                {
+                                                                    "path": [
+                                                                        "*.php"
+                                                                    ]
+                                                                }
+                                                            ]
+                                                        },
+                                                        {
+                                                            "handle": [
+                                                                {
+                                                                    "encodings": {
+                                                                        "gzip": {},
+                                                                        "zstd": {}
+                                                                    },
+                                                                    "handler": "encode",
+                                                                    "prefer": [
+                                                                        "zstd",
+                                                                        "gzip"
+                                                                    ]
+                                                                },
+                                                                {
+                                                                    "file_system": {
+                                                                        "backend": "s3",
+                                                                        "bucket": "${S3_BUCKET}",
+                                                                        "endpoint": "${S3_ENDPOINT}",
+                                                                        "force_path_style": true,
+                                                                        "region": "${S3_REGION}"
+                                                                    },
+                                                                    "root": "static",
+                                                                    "handler": "file_server",
+                                                                    "hide": [
+                                                                        "/Caddyfile"
+                                                                    ]
+                                                                }
+                                                            ]
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ],
+                            "terminal": true
+                        }
+                    ],
+                    "automatic_https": {
+                    },
+                    "logs": {
+                        "logger_names": {
+                            "caddy": ""
+                        }
+                    }
+                },
+                "metrics": {
+                    "listen": [
+                        ":2019"
+                    ],
+                    "routes": [
+                        {
+                            "handle": [
+                                {
+                                    "handler": "metrics"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+        }
+    }
+}

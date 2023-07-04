@@ -5,7 +5,8 @@ FROM caddy:2.7-builder-alpine AS app_caddy_builder
 RUN xcaddy build v2.6.4 \
 	--with github.com/dunglas/mercure/caddy \
 	--with github.com/dunglas/vulcain/caddy \
-	--with github.com/lindenlab/caddy-s3-proxy
+	--with github.com/lindenlab/caddy-s3-proxy \
+	--with github.com/sagikazarmark/caddy-fs-s3
 
 FROM php:8.2-fpm-alpine AS app_php
 
@@ -34,6 +35,8 @@ RUN apk add --no-cache \
 		make \
         php-sysvsem \
         apk-cron \
+		yarn \
+		jq \
 	;
 
 RUN set -eux; \
@@ -53,7 +56,6 @@ RUN set -eux; \
 RUN apk add --no-cache --virtual .pgsql-deps postgresql-dev; \
 	docker-php-ext-install -j$(nproc) pdo_pgsql; \
 	apk add --no-cache --virtual .pgsql-rundeps so:libpq.so.5; \
-	apk add nodejs yarn; \
 	apk del .pgsql-deps
 ###< doctrine/doctrine-bundle ###
 ###< recipes ###
@@ -70,13 +72,7 @@ RUN chmod +x /usr/local/bin/docker-healthcheck
 
 HEALTHCHECK --interval=10s --timeout=3s --retries=3 CMD ["docker-healthcheck"]
 
-COPY --link docker/php/docker-entrypoint.sh /usr/local/bin/docker-entrypoint
-RUN chmod +x /usr/local/bin/docker-entrypoint
-
 USER root
-
-ENTRYPOINT ["docker-entrypoint"]
-CMD ["php-fpm", "-R"]
 
 # https://getcomposer.org/doc/03-cli.md#composer-allow-superuser
 ENV COMPOSER_ALLOW_SUPERUSER=1
@@ -93,12 +89,20 @@ RUN set -eux; \
 # copy sources
 COPY --link . ./
 RUN rm -Rf docker/
+# RUN cp default-env .env
+RUN cp .env.example .env
 COPY --link docker/php/monolog.yaml docker/php/cache.yaml ./config/packages/prod/
 
-# COMMENT OUT BELOW COPY LINES TO DISABLE S3 STORAGE
+# S3 storage stuff
 COPY --link docker/php/oneup_flysystem.yaml docker/php/liip_imagine.yaml ./config/packages/prod/
 COPY --link docker/php/oneup_flysystem.yaml docker/php/liip_imagine.yaml ./config/packages/
 COPY --link docker/php/services.yaml ./config/
+COPY --link docker/php/s3loader.php ./bin/
+
+# caddy added in stuff (single image, different commands approach which puts all inter-linked requirements in one image)
+RUN mkdir -p /etc/caddy
+COPY --from=app_caddy_builder --link /usr/bin/caddy /usr/bin/caddy
+COPY --link docker/caddy/config.template /etc/caddy/config.template
 
 
 
@@ -108,17 +112,22 @@ RUN set -eux; \
 	composer run-script --no-dev post-install-cmd; \
 	chmod +x bin/console; sync;
 	
+ENTRYPOINT ["docker-entrypoint"]
+CMD ["php-fpm", "-R"]
 # finally build the front-end once all else is build
-RUN yarn install && yarn build && yarn cache clean && rm -rf node_modules
+RUN yarn install --lock-frozen && yarn build --mode production && yarn cache clean && rm -rf node_modules
 
-# Caddy image
-FROM caddy:2-alpine AS app_caddy
+COPY --link docker/php/docker-entrypoint.sh /usr/local/bin/docker-entrypoint
+RUN chmod +x /usr/local/bin/docker-entrypoint
 
-WORKDIR /srv/app
+# # Caddy image
+# FROM caddy:2.7-alpine AS app_caddy
 
-COPY --link ./ /srv/app
-COPY --from=app_caddy_builder --link /usr/bin/caddy /usr/bin/caddy
-COPY --from=app_php --link /srv/app/public public/
-COPY --link docker/caddy/Caddyfile /etc/caddy/Caddyfile
+# # WORKDIR /srv/app
 
-# FROM app_php AS symfony_messenger
+# # COPY --link ./ /srv/app
+# COPY --from=app_caddy_builder --link /usr/bin/caddy /usr/bin/caddy
+# # COPY --from=app_php --link /srv/app/public public/
+# COPY --link docker/caddy/Caddyfile /etc/caddy/Caddyfile
+
+# # FROM app_php AS symfony_messenger
