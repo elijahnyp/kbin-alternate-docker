@@ -1,0 +1,3 @@
+[submodule "kbin-core"]
+	path = kbin-core
+	url = https://codeberg.org/Kbin/kbin-core.git

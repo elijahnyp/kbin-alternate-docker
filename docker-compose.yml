@@ -2,7 +2,7 @@ version: "3.4"
 
 services:
   php:
-    image: kbintest
+    image: ghcr.io/elijahnyp/kbin-alternate-docker:0.0.1
     restart: always
     healthcheck:
       interval: 10s
@@ -36,7 +36,7 @@ services:
       - minio
 
   caddy:
-    image: kbintest
+    image: ghcr.io/elijahnyp/kbin-alternate-docker:0.0.1
     command: caddy
     depends_on:
       - php
@@ -94,7 +94,7 @@ services:
       - 15672:15672
 
   messenger_kbin:
-    image: kbintest
+    image: ghcr.io/elijahnyp/kbin-alternate-docker:0.0.1
     command: 'sh -c "php bin/console messenger:consume async --time-limit=3600"'
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-kbin}:${POSTGRES_PASSWORD:-ChangeMe}@database:5432/${POSTGRES_DB:-kbin}?serverVersion=${POSTGRES_VERSION:-13}&charset=${POSTGRES_CHARSET:-utf8}
@@ -117,7 +117,7 @@ services:
       - php
 
   messenger_ap:
-    image: kbintest
+    image: ghcr.io/elijahnyp/kbin-alternate-docker:0.0.1
     command: 'sh -c "php bin/console messenger:consume async_ap --time-limit=3600"'
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-kbin}:${POSTGRES_PASSWORD:-ChangeMe}@database:5432/${POSTGRES_DB:-kbin}?serverVersion=${POSTGRES_VERSION:-13}&charset=${POSTGRES_CHARSET:-utf8}

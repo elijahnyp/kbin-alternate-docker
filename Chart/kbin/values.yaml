@@ -5,13 +5,12 @@
 replicaCount: 1
 
 image:
-  repository: registry.nyp-itsours.com:5000/kbintest
-  pullPolicy: Always
+  repository: ghcr.io/elijahnyp/kbin-alternate-docker
+  pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
 
-imagePullSecrets: 
-  - name: nypregcred
+imagePullSecrets: {}
 nameOverride: ""
 fullnameOverride: ""
 
@@ -95,6 +94,7 @@ redis:
     persistence:
       size: 8Gi
   replica:
+    replicaCount: 3
     persistence:
       size: 8Gi
 rabbitmq:
@@ -119,6 +119,24 @@ public_hostname: kbin.changeme
 # should be the same as public_hostname + /media unless not proxying through caddy
 mediaURL: "https://kbin.changeme/media"
 corsAllowOrigin: '^https?://(localhost|127\.0\.0\.1|kbin\.changeme)(:[0-9]+)?$'
+api_items_per_page: "25"
+adminUsername: kbinadmin
+adminEmail: "" # defaults to adminUsername@public_hostname
+
+# these are defaults, some are changeable in the UI.
+kbin:
+  title: "/kbin"
+  meta_title: "Kbin Lab"
+  meta_description: "content aggregator and micro-blogging platform for the fediverse"
+  meta_keywords: "kbin, content agregator, open source, fediverse"
+  default_lang: en
+  federation_enabled: true
+  contact_email: contact@karab.kbin.pub
+  sender_email: noreply@mg.kbin.pub
+  js_enabled: true
+  registrations_enabled: true
+  header_logo: false
+  captcha_enabled: false
 
 # object config
 # note: these are all mutually exclusive - only one can be enabled at once

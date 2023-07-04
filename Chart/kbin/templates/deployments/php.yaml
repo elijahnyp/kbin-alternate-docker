@@ -48,6 +48,8 @@ spec:
                 name: {{ include "kbin.fullname" . }}-env
             - secretRef:
                 name: kbin-mercure
+            - secretRef:
+                name: kbin-admin
           env:
             - name: MERCURE_JWT_SECRET
               valueFrom:

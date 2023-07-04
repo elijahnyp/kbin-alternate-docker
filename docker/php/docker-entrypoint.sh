@@ -1,19 +1,38 @@
 #!/bin/sh
 set -e
 
-# # merge env into .env
+# merge env with default env - it's ugly, but works.
 dos2unix /srv/app/default-env # just in case it comes in with dos line endings, which breaks the sh magic
 export > /srv/app/.env.cache
 cat /srv/app/default-env|grep -v ^#|grep -v -E '^\s?$'|sed -r 's/(\S+)/export \1/' > /srv/app/.env.stock
 source /srv/app/.env.stock
 source /srv/app/.env.cache
-export | sed -r 's/export //' | grep '=' > /srv/app/.env
 
-echo "$@"
+# echo "$@" # for debugging only
 
+# construct composite variables if not set
+if [[ -z "${DATABASE_URL}" ]]; then 
+#   export DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT:-5432}?serverVersion=${POSTGRES_VERSION:-13}&charset=${POSTGRES_CHARSET:-utf8}"
+  export DATABASE_URL="postgresql://${POSTGRES_USER:-kbin}:${POSTGRES_PASSWORD:-ChangeMe}@${POSTGRES_HOST:-database}:${POSTGRES_PORT:-5432}/${POSTGRES_DATABASE:-kbin}?serverVersion=${POSTGRES_VERSION:-13}&charset=${POSTGRES_CHARSET:-utf8}"
+fi
+if [[ -n "${REDIS_PASSWORD}" && -n "${REDIS_HOST}" ]]; then 
+  export REDIS_DNS="redis://${REDIS_PASSWORD}@${REDIS_HOST:-redis}:${REDIS_PORT:-6379}"
+fi
+if [[ -z "${LOCK_DSN}" ]]; then 
+  export LOCK_DSN="redis://${REDIS_PASSWORD}@${REDIS_HOST:-redis}:${REDIS_PORT:-6379}"
+fi
+if [[ -z "${MESSENGER_TRANSPORT_DSN}" ]]; then 
+  export MESSENGER_TRANSPORT_DSN="amqp://${RABBITMQ_USER:-kbin}:${RABBITMQ_PASSWORD}@${RABBITMQ_HOST:-rabbitmq}:5672/%2f/messages"
+fi
 if [[ -n "$S3_HOST" && -n "$S3_PORT" ]]; then
   export S3_ENDPOINT=${S3_PROTOCOL:-http}://${S3_HOST}:${S3_PORT}
 fi
+if [[ -z "$KBIN_ADMIN_EMAIL"]]; then
+  export KBIN_ADMIN_EMAIL="$kbinusername@$KBIN_DOMAIN"
+fi
+
+# update .env from environment - needed so env.local.php is properly built
+export | sed -r 's/export //' | grep '=' > /srv/app/.env
 
 if [ "$1" == "caddy" ]; then
     # setup caddy variables
@@ -54,23 +73,6 @@ if [ "$1" == "caddy" ]; then
 
     set -- /usr/bin/caddy run --config /etc/caddy/config.json
 fi
-
-# construct composite variables if not set
-if [[ -z "${DATABASE_URL}" ]]; then 
-#   export DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT:-5432}?serverVersion=${POSTGRES_VERSION:-13}&charset=${POSTGRES_CHARSET:-utf8}"
-  export DATABASE_URL="postgresql://${POSTGRES_USER:-kbin}:${POSTGRES_PASSWORD:-ChangeMe}@${POSTGRES_HOST:-database}:${POSTGRES_PORT:-5432}/${POSTGRES_DATABASE:-kbin}?serverVersion=${POSTGRES_VERSION:-13}&charset=${POSTGRES_CHARSET:-utf8}"
-fi
-if [[ -n "${REDIS_PASSWORD}" && -n "${REDIS_HOST}" ]]; then 
-  export REDIS_DNS="redis://${REDIS_PASSWORD}@${REDIS_HOST:-redis}:${REDIS_PORT:-6379}"
-fi
-if [[ -z "${LOCK_DSN}" ]]; then 
-  export LOCK_DSN="redis://${REDIS_PASSWORD}@${REDIS_HOST:-redis}:${REDIS_PORT:-6379}"
-fi
-if [[ -z "${MESSENGER_TRANSPORT_DSN}" ]]; then 
-  export MESSENGER_TRANSPORT_DSN="amqp://${RABBITMQ_USER:-kbin}:${RABBITMQ_PASSWORD}@${RABBITMQ_HOST:-rabbitmq}:5672/%2f/messages"
-fi
-
-export | sed -r 's/export //' | grep '=' > /srv/app/.env
 
 # first arg is `-f` or `--some-option`
 if [ "${1#-}" != "$1" ]; then
@@ -122,7 +124,16 @@ if [ "$1" = 'php-fpm' ] || [ "$1" = 'php' ] || [ "$1" = 'bin/console' ]; then
         if [ "$( find ./migrations -iname '*.php' -print -quit )" ]; then
             bin/console doctrine:migrations:migrate --no-interaction
         fi
-        # composer run-script --no-dev post-install-cmd
+        # create admin user and make admin
+        if [[ -n "$kbinusername" && -n "$KBIN_ADMIN_EMAIL" && -n "$kbinpassword" ]]; then
+            if bin/console kbin:user:admin $kbinusername; then
+                echo "user $kbinusername already exists"
+            else
+                bin/console kbin:user:create $kbinusername $KBIN_ADMIN_EMAIL $kbinpassword
+                echo "created user $kbinusername, making admin"
+                bin/console kbin:user:admin $kbinusername
+            fi
+        fi
     fi
 fi
 
