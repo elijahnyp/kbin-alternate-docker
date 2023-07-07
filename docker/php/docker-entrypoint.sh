@@ -27,8 +27,11 @@ fi
 if [[ -n "$S3_HOST" && -n "$S3_PORT" ]]; then
   export S3_ENDPOINT=${S3_PROTOCOL:-http}://${S3_HOST}:${S3_PORT}
 fi
-if [[ -z "$KBIN_ADMIN_EMAIL"]]; then
+if [[ -z "$KBIN_ADMIN_EMAIL" ]]; then
   export KBIN_ADMIN_EMAIL="$kbinusername@$KBIN_DOMAIN"
+fi
+if [[ -n "$TRUSTED_PROXIES" ]]; then
+  export TRUSTED_PROXIES_ARRAY=$(echo $TRUSTED_PROXIES|sed -e 's/,/", "/g'|sed -e 's/\(.\+\)/\"\1\"/')
 fi
 
 # update .env from environment - needed so env.local.php is properly built
@@ -132,6 +135,8 @@ if [ "$1" = 'php-fpm' ] || [ "$1" = 'php' ] || [ "$1" = 'bin/console' ]; then
                 bin/console kbin:user:create $kbinusername $KBIN_ADMIN_EMAIL $kbinpassword
                 echo "created user $kbinusername, making admin"
                 bin/console kbin:user:admin $kbinusername
+                echo "generating keys"
+                bin/console kbin:ap:keys:update
             fi
         fi
     fi

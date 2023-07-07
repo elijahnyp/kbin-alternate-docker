@@ -95,7 +95,7 @@ COPY --link docker/php/monolog.yaml docker/php/cache.yaml ./config/packages/prod
 
 # S3 storage stuff
 COPY --link docker/php/oneup_flysystem.yaml docker/php/liip_imagine.yaml ./config/packages/prod/
-COPY --link docker/php/oneup_flysystem.yaml docker/php/liip_imagine.yaml ./config/packages/
+COPY --link docker/php/oneup_flysystem.yaml docker/php/liip_imagine.yaml docker/php/framework.yaml ./config/packages/
 COPY --link docker/php/services.yaml ./config/
 COPY --link docker/php/s3loader.php ./bin/
 

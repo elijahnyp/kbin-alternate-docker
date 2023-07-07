@@ -19,6 +19,7 @@ ARG SYMFONY_VERSION=""
 ENV SYMFONY_VERSION ${SYMFONY_VERSION}
 
 ENV APP_ENV=prod
+ENV SYMFONY_LOGLEVEL="info"
 
 WORKDIR /srv/app
 
@@ -37,6 +38,7 @@ RUN apk add --no-cache \
         apk-cron \
 		yarn \
 		jq \
+		nss-tools \
 	;
 
 RUN set -eux; \
@@ -95,8 +97,9 @@ COPY --link docker/php/monolog.yaml docker/php/cache.yaml ./config/packages/prod
 
 # S3 storage stuff
 COPY --link docker/php/oneup_flysystem.yaml docker/php/liip_imagine.yaml ./config/packages/prod/
-COPY --link docker/php/oneup_flysystem.yaml docker/php/liip_imagine.yaml ./config/packages/
-COPY --link docker/php/services.yaml ./config/
+# COPY --link docker/php/oneup_flysystem.yaml docker/php/liip_imagine.yaml ./config/packages/
+COPY --link docker/php/services_prod.yaml ./config/services_prod.yaml
+# COPY --link docker/php/services.yaml ./config/
 COPY --link docker/php/s3loader.php ./bin/
 
 # caddy added in stuff (single image, different commands approach which puts all inter-linked requirements in one image)

@@ -1,4 +1,5 @@
 {
+    "logging":{"logs":{"default":{"level":"${CADDY_LOG_LEVEL:-INFO}"}}},
     "apps": {
         "http": {
             "servers": {
@@ -6,6 +7,10 @@
                     "listen": [
                         ":443"
                     ],
+                    "trusted_proxies": {
+                        "source": "static",
+                        "ranges": [${TRUSTED_PROXIES_ARRAY}]
+                    },
                     "routes": [
                         {
                             "match": [
@@ -319,6 +324,10 @@
                     "listen": [
                         ":80"
                     ],
+                    "trusted_proxies": {
+                        "source": "static",
+                        "ranges": [${TRUSTED_PROXIES_ARRAY}]
+                    },
                     "routes": [
                         {
                             "handle": [

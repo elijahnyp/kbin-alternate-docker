@@ -2,7 +2,7 @@ version: "3.4"
 
 services:
   php:
-    image: ghcr.io/elijahnyp/kbin-alternate-docker:0.0.1
+    image: ghcr.io/elijahnyp/kbin-alternate-docker:0.0.2
     restart: always
     healthcheck:
       interval: 10s
@@ -36,7 +36,7 @@ services:
       - minio
 
   caddy:
-    image: ghcr.io/elijahnyp/kbin-alternate-docker:0.0.1
+    image: ghcr.io/elijahnyp/kbin-alternate-docker:0.0.2
     command: caddy
     depends_on:
       - php
@@ -50,7 +50,7 @@ services:
       S3_BUCKET: ${S3_BUCKET:-kbinmedia}
       S3_REGION: ${S3_REGION:-us-east-1}
       S3_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
-      CADDY_DISABLE_SSL: "true"
+      CADDY_DISABLE_SSL: "false"
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:2019/metrics || exit 1"]
     restart: always
@@ -94,7 +94,7 @@ services:
       - 15672:15672
 
   messenger_kbin:
-    image: ghcr.io/elijahnyp/kbin-alternate-docker:0.0.1
+    image: ghcr.io/elijahnyp/kbin-alternate-docker:0.0.2
     command: 'sh -c "php bin/console messenger:consume async --time-limit=3600"'
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-kbin}:${POSTGRES_PASSWORD:-ChangeMe}@database:5432/${POSTGRES_DB:-kbin}?serverVersion=${POSTGRES_VERSION:-13}&charset=${POSTGRES_CHARSET:-utf8}
@@ -117,7 +117,7 @@ services:
       - php
 
   messenger_ap:
-    image: ghcr.io/elijahnyp/kbin-alternate-docker:0.0.1
+    image: ghcr.io/elijahnyp/kbin-alternate-docker:0.0.2
     command: 'sh -c "php bin/console messenger:consume async_ap --time-limit=3600"'
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-kbin}:${POSTGRES_PASSWORD:-ChangeMe}@database:5432/${POSTGRES_DB:-kbin}?serverVersion=${POSTGRES_VERSION:-13}&charset=${POSTGRES_CHARSET:-utf8}

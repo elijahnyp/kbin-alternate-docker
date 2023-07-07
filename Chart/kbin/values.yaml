@@ -122,6 +122,7 @@ corsAllowOrigin: '^https?://(localhost|127\.0\.0\.1|kbin\.changeme)(:[0-9]+)?$'
 api_items_per_page: "25"
 adminUsername: kbinadmin
 adminEmail: "" # defaults to adminUsername@public_hostname
+trustedProxies: '192.168.0.0/16,10.0.0.0/8,172.16.0.0/12,127.0.0.1'
 
 # these are defaults, some are changeable in the UI.
 kbin:
