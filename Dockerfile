@@ -19,6 +19,7 @@ ARG SYMFONY_VERSION=""
 ENV SYMFONY_VERSION ${SYMFONY_VERSION}
 
 ENV APP_ENV=prod
+ENV SYMFONY_LOGLEVEL="info"
 
 WORKDIR /srv/app
 
@@ -37,6 +38,7 @@ RUN apk add --no-cache \
         apk-cron \
 		yarn \
 		jq \
+		nss-tools \
 	;
 
 RUN set -eux; \
@@ -81,13 +83,13 @@ ENV PATH="${PATH}:/root/.composer/vendor/bin"
 COPY --from=composer/composer:2-bin --link /composer /usr/bin/composer
 
 # prevent the reinstallation of vendors at every changes in the source code
-COPY --link composer.* symfony.* ./
+COPY --link kbin-core/composer.* kbin-core/symfony.* ./
 RUN set -eux; \
 	composer install --prefer-dist --no-dev --no-autoloader --no-scripts --no-progress; \
 	composer clear-cache; 
 
 # copy sources
-COPY --link . ./
+COPY --link ./default-env ./kbin-core/ ./
 RUN rm -Rf docker/
 # RUN cp default-env .env
 RUN cp .env.example .env
@@ -95,8 +97,9 @@ COPY --link docker/php/monolog.yaml docker/php/cache.yaml ./config/packages/prod
 
 # S3 storage stuff
 COPY --link docker/php/oneup_flysystem.yaml docker/php/liip_imagine.yaml ./config/packages/prod/
-COPY --link docker/php/oneup_flysystem.yaml docker/php/liip_imagine.yaml docker/php/framework.yaml ./config/packages/
-COPY --link docker/php/services.yaml ./config/
+# COPY --link docker/php/oneup_flysystem.yaml docker/php/liip_imagine.yaml ./config/packages/
+COPY --link docker/php/services_prod.yaml ./config/services_prod.yaml
+# COPY --link docker/php/services.yaml ./config/
 COPY --link docker/php/s3loader.php ./bin/
 
 # caddy added in stuff (single image, different commands approach which puts all inter-linked requirements in one image)
@@ -119,15 +122,3 @@ RUN yarn install --lock-frozen && yarn build --mode production && yarn cache cle
 
 COPY --link docker/php/docker-entrypoint.sh /usr/local/bin/docker-entrypoint
 RUN chmod +x /usr/local/bin/docker-entrypoint
-
-# # Caddy image
-# FROM caddy:2.7-alpine AS app_caddy
-
-# # WORKDIR /srv/app
-
-# # COPY --link ./ /srv/app
-# COPY --from=app_caddy_builder --link /usr/bin/caddy /usr/bin/caddy
-# # COPY --from=app_php --link /srv/app/public public/
-# COPY --link docker/caddy/Caddyfile /etc/caddy/Caddyfile
-
-# # FROM app_php AS symfony_messenger
