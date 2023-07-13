@@ -84,6 +84,8 @@ COPY --from=composer/composer:2-bin --link /composer /usr/bin/composer
 
 # prevent the reinstallation of vendors at every changes in the source code
 COPY --link kbin-core/composer.* kbin-core/symfony.* ./
+# downgrade flysystem due to bug introduced in 4.8 where it ignores environment variables
+RUN composer require "oneup/flysystem-bundle:4.7" --prefer-dist --no-scripts --no-progress
 RUN set -eux; \
 	composer install --prefer-dist --no-dev --no-autoloader --no-scripts --no-progress; \
 	composer clear-cache; 
